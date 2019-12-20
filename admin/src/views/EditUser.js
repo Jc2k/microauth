@@ -6,7 +6,7 @@ import AccessKeyList from '../ui/AccessKeyList';
 import EditUserPanel from '../ui/EditUserPanel';
 import GroupList from '../ui/GroupList';
 import PolicyList from '../ui/PolicyList';
-
+import WebauthCredentialsList from '../ui/WebauthCredentialsList';
 
 class EditUser extends Component {
     render() {
@@ -15,6 +15,7 @@ class EditUser extends Component {
       return <div>
         <div><EditUserPanel user={user} /></div>
         <AccessKeyList user={user} />
+        <WebauthCredentialsList user={user} />
         <GroupList user={user} />
         <PolicyList user={user} />
       </div>

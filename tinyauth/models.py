@@ -85,6 +85,7 @@ class User(db.Model):
 
     policies = db.relationship('UserPolicy', backref='user', lazy=True)
     access_keys = db.relationship('AccessKey', backref='user', lazy=True)
+    webauthn_credentials = db.relationship('WebAuthnCredential', backref='user', lazy=True)
 
     def _hash_password(self, password):
         dk = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), self.salt, 100000)
@@ -112,3 +113,18 @@ class AccessKey(db.Model):
 
     def __repr__(self):
         return f'<AccessKey {self.access_key_id!r}>'
+
+
+class WebAuthnCredential(db.Model):
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    name = db.Column(db.String(128))
+    credential_id = db.Column(db.String(250), unique=True, nullable=False)
+    public_key = db.Column(db.LargeBinary(), nullable=True)
+    sign_count = db.Column(db.Integer, default=0)
+
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    def __repr__(self):
+        return f'<WebAuthnCredential {self.credential_id!r}>'

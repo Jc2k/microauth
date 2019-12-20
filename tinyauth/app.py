@@ -40,6 +40,7 @@ def configure_backend_db(app):
     app.register_blueprint(resources.group_blueprint)
     app.register_blueprint(resources.group_policy_blueprint)
     app.register_blueprint(resources.service_blueprint)
+    app.register_blueprint(resources.webauthn_credential_blueprint)
 
     from . import frontend
     app.register_blueprint(frontend.frontend_blueprint)

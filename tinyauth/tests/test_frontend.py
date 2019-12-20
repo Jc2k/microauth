@@ -4,7 +4,10 @@ from unittest import mock
 
 from flask import send_from_directory
 
+from tinyauth.models import WebAuthnCredential, db
+
 from . import base
+from .fido2 import Authenticator
 
 
 class TestInvalidToken(base.TestCase):
@@ -235,3 +238,49 @@ class TestLoggedOutUI(base.TestCase):
         body = response.get_data(as_text=True).strip()
         assert '<script type="text/javascript" src="/login/static/js/bundle.c0ff33.js">' in body
         assert body.endswith('</html>')
+
+
+class TestWebAuthn(base.TestCase):
+
+    def test_mfa_dance(self):
+        a = Authenticator()
+
+        db.session.add(WebAuthnCredential(
+            user=self.user,
+            credential_id=a.credential_id,
+            public_key=a.serialized_public_key,
+            sign_count=0,
+        ))
+        db.session.commit()
+
+        response = self.client.post(
+            '/login',
+            data=json.dumps({
+                'username': 'charles',
+                'password': 'mrfluffy',
+            }),
+            content_type='application/json',
+        )
+        assert response.status_code == 200
+
+        challenge = json.loads(response.get_data(as_text=True))
+        assert challenge['mfa-required'] is True
+        assert challenge['authenticators'] == [a.credential_id]
+
+        attestation = a.get(challenge=challenge)
+
+        response = self.client.post(
+            '/login',
+            data=json.dumps({
+                'username': 'charles',
+                'password': 'mrfluffy',
+                'credentialId': a.credential_id,
+                'authenticatorData': list(bytearray(attestation['attestation'])),
+                'clientData': list(bytearray(attestation['client-data'])),
+                'signature': list(bytearray(attestation['signature'])),
+            }),
+            content_type='application/json',
+        )
+        assert response.status_code == 200
+
+        assert {} == json.loads(response.get_data(as_text=True))

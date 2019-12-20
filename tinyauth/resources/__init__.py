@@ -4,6 +4,7 @@ from .user_policy import user_policy_blueprint
 from .group import group_blueprint
 from .group_policy import group_policy_blueprint
 from .service import service_blueprint
+from .webauthn_credential import webauthn_credential_blueprint
 
 __all__ = [
     'access_key_blueprint',
@@ -12,4 +13,5 @@ __all__ = [
     'group_blueprint',
     'group_policy_blueprint',
     'service_blueprint',
+    'webauthn_credential_blueprint',
 ]

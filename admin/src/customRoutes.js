@@ -9,6 +9,9 @@ import DeleteUserPolicy from './views/DeleteUserPolicy';
 import AddAccessKey from './views/AddAccessKey';
 import DeleteAccessKey from './views/DeleteAccessKey';
 import DeleteGroupMembership from './views/DeleteGroupMembership';
+import AddWebauthnCredential from './views/AddWebauthnCredential';
+import EditWebauthnCredential from './views/EditWebauthnCredential';
+import DeleteWebauthnCredential from './views/DeleteWebauthnCredential';
 
 import CreateGroup from './views/CreateGroup';
 import EditGroup from './views/EditGroup';
@@ -24,6 +27,9 @@ export default [
     <Route path="/users/:user/policies/:policy/delete" component={DeleteUserPolicy} />,
     <Route path="/users/:user/keys/add" component={AddAccessKey} />,
     <Route path="/users/:user/keys/:key/delete" component={DeleteAccessKey} />,
+    <Route path="/users/:user/webauthn-credentials/add" component={AddWebauthnCredential} />,
+    <Route path="/users/:user/webauthn-credentials/:credential/edit" component={EditWebauthnCredential} />,
+    <Route path="/users/:user/webauthn-credentials/:credential/delete" component={DeleteWebauthnCredential} />,
     <Route path="/users/:user/groups/:group/delete" component={DeleteGroupMembership} />,
     <Route path="/users/create" component={CreateUser} />,
     <Route path="/users/:user" component={EditUser} />,

@@ -3,6 +3,8 @@ import json
 import uuid
 
 import jwt
+from fido2.client import ClientData
+from fido2.ctap2 import AuthenticatorData
 from flask import (
     Blueprint,
     Response,
@@ -18,7 +20,7 @@ from flask_restful import reqparse
 
 from tinyauth import const
 from tinyauth.audit import audit_request
-from tinyauth.models import User
+from tinyauth.models import User, WebAuthnCredential
 
 frontend_blueprint = Blueprint('frontend', __name__, static_folder=None)
 
@@ -97,6 +99,91 @@ def login():
 @frontend_blueprint.route('/login', methods=["POST"])
 @audit_request('FrontendLogin')
 def login_post(audit_ctx):
+    if get_session():
+        return redirect('/')
+
+    req = user_parser.parse_args()
+
+    user = User.query.filter(User.username == req['username']).first()
+    if not user or not user.password:
+        return Response('', 401)
+
+    if not user.is_valid_password(req['password']):
+        return Response('', 401)
+
+    mfa = False
+
+    data = request.get_json()
+    if 'signature' in data:
+        client_data = ClientData(bytes(bytearray(data['clientData'])))
+        auth_data = AuthenticatorData(bytes(bytearray(data['authenticatorData'])))
+        signature = bytes(bytearray(data['signature']))
+
+        credential_id = data['credentialId'] + ('=' * (len(data['credentialId']) % 4))
+        c = WebAuthnCredential.query.filter_by(user=user, credential_id=credential_id).one()
+
+        from fido2 import cbor
+        from fido2.cose import CoseKey
+        public_key = CoseKey.parse(cbor.loads(c.public_key)[0])
+
+        # Verify the challenge
+        # if client_data.challenge != last_challenge:
+        #    raise ValueError('Challenge mismatch!')
+
+        # Verify the signature
+        public_key.verify(auth_data + client_data.hash, signature)
+        mfa = True
+
+    if not mfa:
+        credentials = WebAuthnCredential.query.filter_by(user=user)
+        if credentials.count() > 0:
+            return jsonify({
+                'mfa-required': True,
+                'challenge': 'zxzxzxzxzx',
+                'authenticators': [c.credential_id for c in credentials],
+            })
+
+    iat = datetime.datetime.utcnow()
+    expires = iat + datetime.timedelta(hours=8)
+    csrf_token = str(uuid.uuid4())
+
+    secret = current_app.auth_backend.get_user_key(
+        'jwt',
+        const.REGION_GLOBAL,
+        current_app.config['TINYAUTH_SERVICE'],
+        iat.date(),
+        user.username,
+    )
+
+    jwt_token = jwt.encode({
+        'user': user.username,
+        'mfa': mfa,
+        'exp': expires,
+        'iat': iat,
+        'csrf-token': csrf_token,
+    }, secret['key'], algorithm='HS256')
+
+    response = jsonify({})
+    response.set_cookie('tinysess', jwt_token, httponly=True, secure=True, expires=expires)
+    response.set_cookie('tinycsrf', csrf_token, httponly=False, secure=True, expires=expires)
+
+    return response
+
+
+@frontend_blueprint.route('/passwordless-begin', methods=["POST"])
+@audit_request('PasswordlessBegin')
+def PasswordlessBegin(audit_ctx):
+    if get_session():
+        return redirect('/')
+
+    return jsonify({
+        'challenge': 'xxxxxxxxxx',
+    })
+
+
+@frontend_blueprint.route('/passwordless-complete', methods=["POST"])
+@audit_request('PasswordlessComplete')
+def PasswordlessComplete(audit_ctx):
     if get_session():
         return redirect('/')
 
